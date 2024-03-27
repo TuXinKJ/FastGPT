@@ -1,0 +1,101 @@
+{
+  "author": "luowy",
+  "templateType": "other",
+  "name": "获取地图输入",
+  "avatar": "/imgs/module/customFeedback.svg",
+  "intro": "该插件通过参数获取地图输入相关信息，或者等待地图操作结束返回信息",
+  "showStatus": true,
+  "modules": [
+    {
+      "moduleId": "ctzbq5p1et9s",
+      "name": "定义插件输入",
+      "intro": "自定义配置外部输入，使用插件时，仅暴露自定义配置的输入",
+      "avatar": "/imgs/module/input.png",
+      "flowType": "pluginInput",
+      "showStatus": true,
+      "position": {
+        "x": 616.4226348688949,
+        "y": -165.05298493910115
+      },
+      "inputs": [
+        {
+          "key": "mapParam",
+          "valueType": "string",
+          "label": "地图参数",
+          "type": "input",
+          "required": false,
+          "description": "需要获取的地图参数，例如范围，地块id等",
+          "edit": true,
+          "editField": {
+            "key": true,
+            "name": true,
+            "description": true,
+            "required": true,
+            "dataType": true,
+            "inputType": true,
+            "isToolInput": true
+          },
+          "connected": true
+        }
+      ],
+      "outputs": [
+        {
+          "key": "mapParam",
+          "valueType": "string",
+          "label": "地图参数",
+          "type": "source",
+          "edit": true,
+          "targets": [
+            {
+              "moduleId": "ez419jjgpsjd",
+              "key": "mapResult"
+            }
+          ]
+        }
+      ]
+    },
+    {
+      "moduleId": "ez419jjgpsjd",
+      "name": "定义插件输出",
+      "intro": "自定义配置外部输出，使用插件时，仅暴露自定义配置的输出",
+      "avatar": "/imgs/module/output.png",
+      "flowType": "pluginOutput",
+      "showStatus": true,
+      "position": {
+        "x": 1559.1082675669961,
+        "y": -170.62711830827092
+      },
+      "inputs": [
+        {
+          "key": "mapResult",
+          "valueType": "any",
+          "label": "地图返回结果",
+          "type": "target",
+          "required": true,
+          "description": "获取的地图参数的结果",
+          "edit": true,
+          "value": "/api/plugins/getMapInput",
+          "editField": {
+            "key": true,
+            "name": true,
+            "description": true,
+            "required": false,
+            "dataType": true,
+            "inputType": false
+          },
+          "connected": true
+        }
+      ],
+      "outputs": [
+        {
+          "key": "mapResult",
+          "valueType": "any",
+          "label": "地图返回结果",
+          "type": "source",
+          "edit": true,
+          "targets": []
+        }
+      ]
+    }
+  ]
+}

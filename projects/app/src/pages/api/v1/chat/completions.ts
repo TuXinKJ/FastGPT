@@ -35,6 +35,7 @@ import { OutLinkChatAuthProps } from '@fastgpt/global/support/permission/chat';
 import { setEntryEntries } from '@/service/moduleDispatch/utils';
 import { UserChatItemType } from '@fastgpt/global/core/chat/type';
 import { DispatchNodeResponseKeyEnum } from '@fastgpt/global/core/module/runtime/constants';
+import { setMapParam } from '@/pages/api/core/plugin/map';
 
 type FastGptWebChatProps = {
   chatId?: string; // undefined: nonuse history, '': new chat, 'xxxxx': use history
@@ -48,6 +49,7 @@ export type Props = ChatCompletionCreateParams &
     stream?: boolean;
     detail?: boolean;
     variables: Record<string, any>;
+    mapParam: Record<string, any>;
   };
 export type ChatResponseType = {
   newChatId: string;
@@ -84,12 +86,15 @@ export default withNextCors(async function handler(req: NextApiRequest, res: Nex
     // team chat
     teamId: spaceTeamId,
     teamToken,
+    // 地图参数
+    mapParam = {},
     stream = false,
     detail = false,
     messages = [],
     variables = {}
   } = req.body as Props;
   try {
+    setMapParam(mapParam);
     const originIp = requestIp.getClientIp(req);
 
     await connectToDatabase();

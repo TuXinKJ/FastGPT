@@ -36,6 +36,7 @@ import { ChatNodeUsageType } from '@fastgpt/global/support/wallet/bill/type';
 import { dispatchRunTools } from './agent/runTool/index';
 import { ChatItemValueTypeEnum } from '@fastgpt/global/core/chat/constants';
 import { DispatchFlowResponse } from './type';
+import { getMapParam } from '@/pages/api/core/plugin/map';
 
 const callbackMap: Record<`${FlowNodeTypeEnum}`, Function> = {
   [FlowNodeTypeEnum.historyNode]: dispatchHistory,
@@ -153,6 +154,13 @@ export async function dispatchWorkFlow({
   }
   /* Inject data into module input */
   function moduleInput(module: RunningModuleItemType, data: Record<string, any> = {}) {
+    if (module.inputs) {
+      const mapInput: any = module.inputs.find((item) => item.key === 'mapParam');
+      if (mapInput && !mapInput.changeMapParam) {
+        mapInput.changeMapParam = true;
+        mapInput.value = getMapParam(mapInput.value);
+      }
+    }
     const updateInputValue = (key: string, value: any) => {
       const index = module.inputs.findIndex((item: any) => item.key === key);
       if (index === -1) return;

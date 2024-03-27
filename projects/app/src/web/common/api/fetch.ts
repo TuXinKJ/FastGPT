@@ -10,6 +10,7 @@ import {
   EventStreamContentType,
   fetchEventSource
 } from '@fortaine/fetch-event-source';
+import { getMapParam } from '../utils/map';
 
 type StreamFetchProps = {
   url?: string;
@@ -96,7 +97,19 @@ export const streamFetch = ({
       // auto complete variables
       const variables = data?.variables || {};
       variables.cTime = dayjs().format('YYYY-MM-DD HH:mm:ss');
-
+      const obj = getMapParam();
+      let mapParam = {};
+      // let mapParam = {
+      //   extent: [
+      //     119.47801649563647,
+      //     28.90873757245852,
+      //     119.97610153613046,
+      //     29.227207670858093
+      //   ]
+      // };
+      if (obj && obj.dataType === 'object') {
+        mapParam = obj.data;
+      }
       const requestData = {
         method: 'POST',
         headers: {
@@ -108,7 +121,8 @@ export const streamFetch = ({
           ...data,
           variables,
           detail: true,
-          stream: true
+          stream: true,
+          mapParam
         })
       };
 

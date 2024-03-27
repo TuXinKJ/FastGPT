@@ -14,6 +14,7 @@ import { useRouter } from 'next/router';
 import { useSystemStore } from '@/web/common/system/useSystemStore';
 import type { FastGPTFeConfigsType } from '@fastgpt/global/common/system/types/index.d';
 import { change2DefaultLng, setLngStore } from '@/web/common/utils/i18n';
+import { initMapPostMessage } from '@/web/common/utils/map';
 
 import 'nprogress/nprogress.css';
 import '@/web/styles/reset.scss';
@@ -42,7 +43,6 @@ function App({ Component, pageProps }: AppProps) {
   const { loadGitStar, setInitd, feConfigs } = useSystemStore();
   const [scripts, setScripts] = useState<FastGPTFeConfigsType['scripts']>([]);
   const [title, setTitle] = useState(process.env.SYSTEM_NAME || 'AI');
-
   useEffect(() => {
     // get init data
     (async () => {
@@ -67,6 +67,7 @@ function App({ Component, pageProps }: AppProps) {
       setScripts(scripts || []);
       setInitd();
     })();
+    initMapPostMessage();
 
     // add window error track
     window.onerror = function (msg, url) {

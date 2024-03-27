@@ -1,3 +1,10 @@
+/*
+ * @Autor: luowy
+ * @Date: 2024-03-18 11:10:01
+ * @LastEditors: luowy
+ * @LastEditTime: 2024-03-20 17:30:09
+ * @Description:
+ */
 export enum EventNameEnum {
   sendQuestion = 'sendQuestion',
   editQuestion = 'editQuestion',
@@ -5,7 +12,8 @@ export enum EventNameEnum {
   // flow
   requestFlowEvent = 'requestFlowEvent',
   requestFlowStore = 'requestFlowStore',
-  receiveFlowStore = 'receiveFlowStore'
+  receiveFlowStore = 'receiveFlowStore',
+  mapResult = 'mapResult'
 }
 type EventNameType = `${EventNameEnum}`;
 

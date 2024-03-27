@@ -1,3 +1,10 @@
+/*
+ * @Autor: luowy
+ * @Date: 2024-03-18 11:10:01
+ * @LastEditors: luowy
+ * @LastEditTime: 2024-03-21 15:21:06
+ * @Description:
+ */
 import type { NextApiRequest, NextApiResponse } from 'next';
 import type { HttpBodyType } from '@fastgpt/global/core/module/api.d';
 import { getErrText } from '@fastgpt/global/common/error/utils';

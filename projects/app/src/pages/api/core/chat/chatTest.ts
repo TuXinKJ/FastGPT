@@ -13,6 +13,7 @@ import { authCert } from '@fastgpt/service/support/permission/auth/common';
 import { getUserChatInfoAndAuthTeamPoints } from '@/service/support/permission/auth/team';
 import { setEntryEntries } from '@/service/moduleDispatch/utils';
 import { chatValue2RuntimePrompt } from '@fastgpt/global/core/chat/adapt';
+import { setMapParam } from '../plugin/map';
 
 export type Props = {
   history: ChatItemType[];
@@ -21,6 +22,7 @@ export type Props = {
   variables: Record<string, any>;
   appId: string;
   appName: string;
+  mapParam: Record<string, any>;
 };
 
 export default async function handler(req: NextApiRequest, res: NextApiResponse) {
@@ -31,8 +33,16 @@ export default async function handler(req: NextApiRequest, res: NextApiResponse)
     console.log('error: ', 'request error');
     res.end();
   });
-
-  let { modules = [], history = [], prompt, variables = {}, appName, appId } = req.body as Props;
+  let {
+    modules = [],
+    history = [],
+    prompt,
+    variables = {},
+    appName,
+    appId,
+    mapParam
+  } = req.body as Props;
+  setMapParam(mapParam);
   try {
     await connectToDatabase();
     if (!history || !modules || !prompt || prompt.length === 0) {
@@ -55,6 +65,8 @@ export default async function handler(req: NextApiRequest, res: NextApiResponse)
     const { user } = await getUserChatInfoAndAuthTeamPoints(tmbId);
 
     const { text, files } = chatValue2RuntimePrompt(prompt);
+
+    // todo 获取地图参数
 
     /* start process */
     const { flowResponses, flowUsages } = await dispatchWorkFlow({

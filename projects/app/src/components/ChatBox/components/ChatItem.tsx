@@ -21,12 +21,14 @@ import { formatChatValue2InputType } from '../utils';
 import Markdown, { CodeClassName } from '@/components/Markdown';
 import styles from '../index.module.scss';
 import MyIcon from '@fastgpt/web/components/common/Icon';
+import MapInfo from '@/components/MapInfo';
 import {
   ChatItemValueTypeEnum,
   ChatRoleEnum,
   ChatStatusEnum
 } from '@fastgpt/global/core/chat/constants';
 import FilesBlock from './FilesBox';
+import { actionMap } from '@/web/common/utils/map';
 
 const colorMap = {
   [ChatStatusEnum.loading]: {
@@ -81,7 +83,20 @@ const ChatItem = ({
         };
   const { chat, isChatting } = chatControllerProps;
 
+  /**
+   * 处理地图参数
+   */
+  const handleMapParam = (source: string) => {
+    const startIndex = source.indexOf('mapStart');
+    const endIndex = source.indexOf('mapEnd');
+    const param = source.substring(startIndex + 8, endIndex);
+    const newSource = source.substring(0, startIndex);
+    actionMap(param);
+    return newSource;
+  };
+
   const ContentCard = useMemo(() => {
+    console.log(chat.value);
     if (type === 'Human') {
       const { text, files = [] } = formatChatValue2InputType(chat.value);
 
@@ -99,14 +114,20 @@ const ChatItem = ({
           const key = `${chat.dataId}-ai-${i}`;
           if (value.text) {
             let source = value.text?.content || '';
-
-            if (isLastChild && !isChatting && questionGuides.length > 0) {
-              source = `${source}
-\`\`\`${CodeClassName.questionGuide}
+            // let source = 'type:mapAi&action:查询&param:上海';
+            if (source.indexOf('mapAi') > -1 && source.indexOf('mapStart') === -1) {
+              return <MapInfo key={key} params={source} uid={key} />;
+            } else {
+              if (source.indexOf('mapStart') > -1) {
+                source = handleMapParam(source);
+              }
+              if (isLastChild && !isChatting && questionGuides.length > 0) {
+                source = `${source}
+\`\`\`${CodeClassName.questionGuide} 
 ${JSON.stringify(questionGuides)}`;
+              }
+              return <Markdown key={key} source={source} isChatting={isLastChild && isChatting} />;
             }
-
-            return <Markdown key={key} source={source} isChatting={isLastChild && isChatting} />;
           }
           if (value.type === ChatItemValueTypeEnum.tool && value.tools) {
             return (
@@ -221,6 +242,7 @@ ${toolResponse}`}
         <Card
           className="markdown"
           {...MessageCardStyle}
+          style={{ width: 'auto' }}
           bg={styleMap.bg}
           borderRadius={styleMap.borderRadius}
           textAlign={'left'}
