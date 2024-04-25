@@ -8,10 +8,7 @@ import {
   Connection,
   addEdge
 } from 'reactflow';
-import type {
-  FlowModuleItemType,
-  FlowModuleTemplateType
-} from '@fastgpt/global/core/module/type.d';
+import type { FlowModuleItemType, FlowNodeTemplateType } from '@fastgpt/global/core/module/type.d';
 import type {
   FlowNodeChangeProps,
   FlowNodeInputItemType
@@ -64,7 +61,7 @@ export type useFlowProviderStoreType = {
   onDelNode: (nodeId: string) => void;
   onChangeNode: (e: FlowNodeChangeProps) => void;
   onCopyNode: (nodeId: string) => void;
-  onResetNode: (e: { id: string; module: FlowModuleTemplateType }) => void;
+  onResetNode: (e: { id: string; module: FlowNodeTemplateType }) => void;
   onDelEdge: (e: {
     moduleId: string;
     sourceHandle?: string | undefined;
@@ -169,7 +166,7 @@ export const FlowProvider = ({
   }, [nodes]);
 
   const onFixView = useCallback(() => {
-    const btn = document.querySelector('.react-flow__controls-fitview') as HTMLButtonElement;
+    const btn = document.querySelector('.custom-workflow-fix_view') as HTMLButtonElement;
 
     setTimeout(() => {
       btn && btn.click();
@@ -216,9 +213,6 @@ export const FlowProvider = ({
 
         if (source?.flowType === FlowNodeTypeEnum.classifyQuestion && !type) {
           return ModuleIOValueTypeEnum.boolean;
-        }
-        if (source?.flowType === FlowNodeTypeEnum.tools) {
-          return ModuleIOValueTypeEnum.tools;
         }
         if (source?.flowType === FlowNodeTypeEnum.pluginInput) {
           return source?.inputs.find((input) => input.key === connect.sourceHandle)?.valueType;
@@ -408,7 +402,7 @@ export const FlowProvider = ({
         toolInputs: inputs.filter((item) => isTool && item.toolDescription),
         commonInputs: inputs.filter((item) => {
           if (!isTool) return true;
-          return !item.toolDescription && item.key !== ModuleInputKeyEnum.switch;
+          return !item.toolDescription;
         })
       };
     },
@@ -417,7 +411,7 @@ export const FlowProvider = ({
 
   // reset a node data. delete edge and replace it
   const onResetNode = useCallback(
-    ({ id, module }: { id: string; module: FlowModuleTemplateType }) => {
+    ({ id, module }: { id: string; module: FlowNodeTemplateType }) => {
       setNodes((state) =>
         state.map((node) => {
           if (node.id === id) {
@@ -547,12 +541,6 @@ export const onResetNode = (e: Parameters<useFlowProviderStoreType['onResetNode'
   eventBus.emit(EventNameEnum.requestFlowEvent, {
     type: 'onResetNode',
     data: e
-  });
-};
-export const onDelNode = (nodeId: string) => {
-  eventBus.emit(EventNameEnum.requestFlowEvent, {
-    type: 'onDelNode',
-    data: nodeId
   });
 };
 export const onDelConnect = (e: Parameters<useFlowProviderStoreType['onDelConnect']>[0]) => {

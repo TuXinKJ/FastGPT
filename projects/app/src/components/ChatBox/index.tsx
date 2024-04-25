@@ -11,7 +11,6 @@ import React, {
 import Script from 'next/script';
 import { throttle } from 'lodash';
 import type {
-  AIChatItemType,
   AIChatItemValueItemType,
   ChatSiteItemType,
   UserChatItemValueItemType
@@ -39,7 +38,6 @@ import type { AdminMarkType } from './SelectMarkCollection';
 import MyTooltip from '../MyTooltip';
 
 import { postQuestionGuide } from '@/web/core/ai/api';
-import { splitGuideModule } from '@fastgpt/global/core/module/utils';
 import type {
   generatingMessageProps,
   StartChatFnProps,
@@ -55,6 +53,8 @@ import { ChatItemValueTypeEnum, ChatRoleEnum } from '@fastgpt/global/core/chat/c
 import { formatChatValue2InputType } from './utils';
 import { textareaMinH } from './constants';
 import { SseResponseEventEnum } from '@fastgpt/global/core/module/runtime/constants';
+import ChatProvider, { useChatProviderStore } from './Provider';
+
 import ChatItem from './components/ChatItem';
 
 import dynamic from 'next/dynamic';
@@ -83,9 +83,9 @@ type Props = OutLinkChatAuthProps & {
   userGuideModule?: ModuleItemType;
   showFileSelector?: boolean;
   active?: boolean; // can use
+  appId: string;
 
   // not chat test params
-  appId?: string;
   chatId?: string;
 
   onUpdateVariable?: (e: Record<string, any>) => void;
@@ -113,7 +113,6 @@ const ChatBox = (
     showEmptyIntro = false,
     appAvatar,
     userAvatar,
-    userGuideModule,
     showFileSelector,
     active = true,
     appId,
@@ -138,7 +137,6 @@ const ChatBox = (
   const questionGuideController = useRef(new AbortController());
   const isNewChatReplace = useRef(false);
 
-  const [chatHistories, setChatHistories] = useState<ChatSiteItemType[]>([]);
   const [feedbackId, setFeedbackId] = useState<string>();
   const [readFeedbackData, setReadFeedbackData] = useState<{
     chatItemId: string;
@@ -147,17 +145,20 @@ const ChatBox = (
   const [adminMarkData, setAdminMarkData] = useState<AdminMarkType & { chatItemId: string }>();
   const [questionGuides, setQuestionGuide] = useState<string[]>([]);
 
-  const isChatting = useMemo(
-    () =>
-      chatHistories[chatHistories.length - 1] &&
-      chatHistories[chatHistories.length - 1]?.status !== 'finish',
-    [chatHistories]
-  );
+  const {
+    welcomeText,
+    variableModules,
+    questionGuide,
+    startSegmentedAudio,
+    finishSegmentedAudio,
+    setAudioPlayingChatId,
+    splitText2Audio,
+    chatHistories,
+    setChatHistories,
+    isChatting
+  } = useChatProviderStore();
 
-  const { welcomeText, variableModules, questionGuide, ttsConfig } = useMemo(
-    () => splitGuideModule(userGuideModule),
-    [userGuideModule]
-  );
+  /* variable */
   const filterVariableModules = useMemo(
     () => variableModules.filter((item) => item.type !== VariableInputEnum.external),
     [variableModules]
@@ -172,10 +173,9 @@ const ChatBox = (
       chatStarted: false
     }
   });
-  const { setValue, watch, handleSubmit, control } = chatForm;
+  const { setValue, watch, handleSubmit } = chatForm;
   const variables = watch('variables');
   const chatStarted = watch('chatStarted');
-
   const variableIsFinish = useMemo(() => {
     if (!filterVariableModules || filterVariableModules.length === 0 || chatHistories.length > 0)
       return true;
@@ -213,11 +213,20 @@ const ChatBox = (
   );
   // eslint-disable-next-line react-hooks/exhaustive-deps
   const generatingMessage = useCallback(
-    ({ event, text = '', status, name, tool }: generatingMessageProps) => {
+    ({
+      event,
+      text = '',
+      status,
+      name,
+      tool,
+      autoTTSResponse
+    }: generatingMessageProps & { autoTTSResponse?: boolean }) => {
       setChatHistories((state) =>
         state.map((item, index) => {
           if (index !== state.length - 1) return item;
           if (item.obj !== ChatRoleEnum.AI) return item;
+
+          autoTTSResponse && splitText2Audio(formatChatValue2InputType(item.value).text || '');
 
           const lastValue: AIChatItemValueItemType = JSON.parse(
             JSON.stringify(item.value[item.value.length - 1])
@@ -258,10 +267,7 @@ const ChatBox = (
             };
             return {
               ...item,
-              value:
-                lastValue && lastValue.text
-                  ? item.value.slice(0, -1).concat(val)
-                  : item.value.concat(val)
+              value: item.value.concat(val)
             };
           } else if (
             event === SseResponseEventEnum.toolParams &&
@@ -303,7 +309,7 @@ const ChatBox = (
       );
       generatingScroll();
     },
-    [generatingScroll]
+    [generatingScroll, setChatHistories, splitText2Audio]
   );
 
   // 重置输入内容
@@ -361,8 +367,10 @@ const ChatBox = (
     ({
       text = '',
       files = [],
-      history = chatHistories
+      history = chatHistories,
+      autoTTSResponse = false
     }: ChatBoxInputType & {
+      autoTTSResponse?: boolean;
       history?: ChatSiteItemType[];
     }) => {
       handleSubmit(async ({ variables }) => {
@@ -374,7 +382,7 @@ const ChatBox = (
           });
           return;
         }
-        questionGuideController.current?.abort('stop');
+
         text = text.trim();
 
         if (!text && files.length === 0) {
@@ -383,6 +391,15 @@ const ChatBox = (
             status: 'warning'
           });
           return;
+        }
+
+        const responseChatId = getNanoid(24);
+        questionGuideController.current?.abort('stop');
+
+        // set auto audio playing
+        if (autoTTSResponse) {
+          await startSegmentedAudio();
+          setAudioPlayingChatId(responseChatId);
         }
 
         const newChatList: ChatSiteItemType[] = [
@@ -413,7 +430,7 @@ const ChatBox = (
             status: 'finish'
           },
           {
-            dataId: getNanoid(24),
+            dataId: responseChatId,
             obj: ChatRoleEnum.AI,
             value: [
               {
@@ -442,6 +459,7 @@ const ChatBox = (
           chatController.current = abortSignal;
 
           const messages = chats2GPTMessages({ messages: newChatList, reserveId: true });
+
           const {
             responseData,
             responseText,
@@ -450,7 +468,7 @@ const ChatBox = (
             chatList: newChatList,
             messages,
             controller: abortSignal,
-            generatingMessage,
+            generatingMessage: (e) => generatingMessage({ ...e, autoTTSResponse }),
             variables
           });
 
@@ -488,6 +506,9 @@ const ChatBox = (
             generatingScroll();
             isPc && TextareaDom.current?.focus();
           }, 100);
+
+          // tts audio
+          autoTTSResponse && splitText2Audio(responseText, true);
         } catch (err: any) {
           toast({
             title: t(getErrText(err, 'core.chat.error.Chat error')),
@@ -512,11 +533,14 @@ const ChatBox = (
             })
           );
         }
+
+        autoTTSResponse && finishSegmentedAudio();
       })();
     },
     [
       chatHistories,
       createQuestionGuide,
+      finishSegmentedAudio,
       generatingMessage,
       generatingScroll,
       handleSubmit,
@@ -524,6 +548,10 @@ const ChatBox = (
       isPc,
       onStartChat,
       resetInputVal,
+      setAudioPlayingChatId,
+      setChatHistories,
+      splitText2Audio,
+      startSegmentedAudio,
       t,
       toast
     ]
@@ -538,10 +566,9 @@ const ChatBox = (
         setLoading(true);
         const index = chatHistories.findIndex((item) => item.dataId === dataId);
         const delHistory = chatHistories.slice(index);
-
         try {
           await Promise.all(
-            delHistory.map(async (item) => {
+            delHistory.map((item) => {
               if (item.dataId) {
                 return onDelMessage({ contentId: item.dataId });
               }
@@ -564,14 +591,29 @@ const ChatBox = (
     },
     [chatHistories, onDelMessage, sendPrompt, setLoading, toast]
   );
-  // delete one message
+  // delete one message(One human and the ai response)
   const delOneMessage = useCallback(
     (dataId?: string) => {
       if (!dataId || !onDelMessage) return;
       return () => {
-        setChatHistories((state) => state.filter((chat) => chat.dataId !== dataId));
-        onDelMessage({
-          contentId: dataId
+        setChatHistories((state) => {
+          let aiIndex = -1;
+
+          return state.filter((chat, i) => {
+            if (chat.dataId === dataId) {
+              aiIndex = i + 1;
+              onDelMessage({
+                contentId: dataId
+              });
+              return false;
+            } else if (aiIndex === i && chat.obj === ChatRoleEnum.AI && chat.dataId) {
+              onDelMessage({
+                contentId: chat.dataId
+              });
+              return false;
+            }
+            return true;
+          });
         });
       };
     },
@@ -631,6 +673,8 @@ const ChatBox = (
           updateChatUserFeedback({
             appId,
             chatId,
+            teamId,
+            teamToken,
             chatItemId: chat.dataId,
             shareId,
             outLinkUid,
@@ -639,7 +683,7 @@ const ChatBox = (
         } catch (error) {}
       };
     },
-    [appId, chatId, feedbackType, outLinkUid, shareId]
+    [appId, chatId, feedbackType, outLinkUid, shareId, teamId, teamToken]
   );
   const onCloseUserLike = useCallback(
     (chat: ChatSiteItemType) => {
@@ -655,13 +699,15 @@ const ChatBox = (
         );
         updateChatUserFeedback({
           appId,
+          teamId,
+          teamToken,
           chatId,
           chatItemId: chat.dataId,
           userGoodFeedback: undefined
         });
       };
     },
-    [appId, chatId, feedbackType]
+    [appId, chatId, feedbackType, teamId, teamToken]
   );
   const onADdUserDislike = useCallback(
     (chat: ChatSiteItemType) => {
@@ -688,6 +734,8 @@ const ChatBox = (
               chatId,
               chatItemId: chat.dataId,
               shareId,
+              teamId,
+              teamToken,
               outLinkUid
             });
           } catch (error) {}
@@ -696,7 +744,7 @@ const ChatBox = (
         return () => setFeedbackId(chat.dataId);
       }
     },
-    [appId, chatId, feedbackType, outLinkUid, shareId]
+    [appId, chatId, feedbackType, outLinkUid, shareId, teamId, teamToken]
   );
   const onReadUserDislike = useCallback(
     (chat: ChatSiteItemType) => {
@@ -858,9 +906,9 @@ const ChatBox = (
                     type={item.obj}
                     avatar={item.obj === 'Human' ? userAvatar : appAvatar}
                     chat={item}
-                    isChatting={isChatting}
                     onRetry={retryInput(item.dataId)}
                     onDelete={delOneMessage(item.dataId)}
+                    isLastChild={index === chatHistories.length - 1}
                   />
                 )}
                 {item.obj === 'AI' && (
@@ -869,18 +917,14 @@ const ChatBox = (
                       type={item.obj}
                       avatar={appAvatar}
                       chat={item}
-                      isChatting={isChatting}
-                      onDelete={delOneMessage(item.dataId)}
+                      isLastChild={index === chatHistories.length - 1}
                       {...(item.obj === 'AI' && {
-                        setChatHistories,
                         showVoiceIcon,
-                        ttsConfig,
                         shareId,
                         outLinkUid,
                         teamId,
                         teamToken,
                         statusBoxData,
-                        isLastChild: index === chatHistories.length - 1,
                         questionGuides,
                         onMark: onMark(
                           item,
@@ -922,7 +966,7 @@ const ChatBox = (
                             icon="core/app/markLight"
                             text={t('core.chat.Admin Mark Content')}
                           />
-                          <Box whiteSpace={'pre'}>
+                          <Box whiteSpace={'pre-wrap'}>
                             <Box color={'black'}>{item.adminFeedback.q}</Box>
                             <Box color={'myGray.600'}>{item.adminFeedback.a}</Box>
                           </Box>
@@ -941,21 +985,19 @@ const ChatBox = (
         <MessageInput
           onSendMessage={sendPrompt}
           onStop={() => chatController.current?.abort('stop')}
-          isChatting={isChatting}
           TextareaDom={TextareaDom}
           resetInputVal={resetInputVal}
           showFileSelector={showFileSelector}
-          shareId={shareId}
-          outLinkUid={outLinkUid}
-          teamId={teamId}
-          teamToken={teamToken}
           chatForm={chatForm}
+          appId={appId}
         />
       )}
       {/* user feedback modal */}
       {!!feedbackId && chatId && appId && (
         <FeedbackModal
           appId={appId}
+          teamId={teamId}
+          teamToken={teamToken}
           chatId={chatId}
           chatItemId={feedbackId}
           shareId={shareId}
@@ -1045,5 +1087,14 @@ const ChatBox = (
     </Flex>
   );
 };
+const ForwardChatBox = forwardRef(ChatBox);
 
-export default React.memo(forwardRef(ChatBox));
+const ChatBoxContainer = (props: Props, ref: ForwardedRef<ComponentRef>) => {
+  return (
+    <ChatProvider {...props}>
+      <ForwardChatBox {...props} ref={ref} />
+    </ChatProvider>
+  );
+};
+
+export default React.memo(forwardRef(ChatBoxContainer));

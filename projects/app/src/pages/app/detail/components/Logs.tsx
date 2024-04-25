@@ -26,12 +26,13 @@ import type { ComponentRef } from '@/components/ChatBox/type.d';
 import { useQuery } from '@tanstack/react-query';
 import { getInitChatInfo } from '@/web/core/chat/api';
 import Tag from '@/components/Tag';
-import MyModal from '@/components/MyModal';
+import MyModal from '@fastgpt/web/components/common/MyModal';
 import { addDays } from 'date-fns';
 import MyBox from '@/components/common/MyBox';
 import { usePagination } from '@fastgpt/web/hooks/usePagination';
 import DateRangePicker, { DateRangeType } from '@fastgpt/web/components/common/DateRangePicker';
 import { formatChatValue2InputType } from '@/components/ChatBox/utils';
+import { getNanoid } from '@fastgpt/global/common/string/tools';
 
 const Logs = ({ appId }: { appId: string }) => {
   const { t } = useTranslation();
@@ -234,6 +235,7 @@ const DetailLogsModal = ({
       onSuccess(res) {
         const history = res.history.map((item) => ({
           ...item,
+          dataId: item.dataId || getNanoid(),
           status: 'finish' as any
         }));
         ChatBoxRef.current?.resetHistory(history);

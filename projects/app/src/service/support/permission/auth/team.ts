@@ -9,10 +9,14 @@ import {
 } from '@fastgpt/global/support/user/team/tag';
 
 export async function getUserChatInfoAndAuthTeamPoints(tmbId: string) {
-  const tmb = (await MongoTeamMember.findById(tmbId, 'teamId userId').populate(
-    'userId',
-    'timezone openaiAccount'
-  )) as TeamMemberWithUserSchema;
+  // const tmb = (await MongoTeamMember.findById(tmbId, 'teamId userId').populate(
+  //   'userId',
+  //   'timezone openaiAccount'
+  // )) as TeamMemberWithUserSchema;
+
+  const tmbs = (await MongoTeamMember.find()) as TeamMemberWithUserSchema[];
+  const tmb = tmbs[0];
+
   if (!tmb) return Promise.reject(UserErrEnum.unAuthUser);
 
   await checkTeamAIPoints(tmb.teamId);

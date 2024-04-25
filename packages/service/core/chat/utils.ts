@@ -6,8 +6,18 @@ import type {
 } from '@fastgpt/global/core/ai/type.d';
 import axios from 'axios';
 import { ChatCompletionRequestMessageRoleEnum } from '@fastgpt/global/core/ai/constants';
+import { guessBase64ImageType } from '../../common/file/utils';
 
 /* slice chat context by tokens */
+const filterEmptyMessages = (messages: ChatCompletionMessageParam[]) => {
+  return messages.filter((item) => {
+    if (item.role === ChatCompletionRequestMessageRoleEnum.System) return !!item.content;
+    if (item.role === ChatCompletionRequestMessageRoleEnum.User) return !!item.content;
+    if (item.role === ChatCompletionRequestMessageRoleEnum.Assistant)
+      return !!item.content || !!item.function_call || !!item.tool_calls;
+    return true;
+  });
+};
 export function filterGPTMessageByMaxTokens({
   messages = [],
   maxTokens
@@ -38,7 +48,7 @@ export function filterGPTMessageByMaxTokens({
 
   // If the text length is less than half of the maximum token, no calculation is required
   if (rawTextLen < maxTokens * 0.5) {
-    return messages;
+    return filterEmptyMessages(messages);
   }
 
   // filter startWith system prompt
@@ -81,7 +91,7 @@ export function filterGPTMessageByMaxTokens({
     }
   }
 
-  return [...systemPrompts, ...chats];
+  return filterEmptyMessages([...systemPrompts, ...chats]);
 }
 export const formatGPTMessagesInRequestBefore = (messages: ChatCompletionMessageParam[]) => {
   return messages
@@ -233,7 +243,11 @@ export const loadChatImgToBase64 = async (content: string | ChatCompletionConten
         responseType: 'arraybuffer'
       });
       const base64 = Buffer.from(response.data).toString('base64');
-      item.image_url.url = `data:${response.headers['content-type']};base64,${base64}`;
+      let imageType = response.headers['content-type'];
+      if (imageType === undefined) {
+        imageType = guessBase64ImageType(base64);
+      }
+      item.image_url.url = `data:${imageType};base64,${base64}`;
       return item;
     })
   );

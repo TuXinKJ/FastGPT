@@ -9,9 +9,7 @@ import {
   AccordionButton,
   AccordionPanel,
   AccordionIcon,
-  Button,
-  Image,
-  Grid
+  Image
 } from '@chakra-ui/react';
 import React, { useMemo } from 'react';
 import ChatController, { type ChatControllerProps } from './ChatController';
@@ -21,14 +19,13 @@ import { formatChatValue2InputType } from '../utils';
 import Markdown, { CodeClassName } from '@/components/Markdown';
 import styles from '../index.module.scss';
 import MyIcon from '@fastgpt/web/components/common/Icon';
-import MapInfo from '@/components/MapInfo';
 import {
   ChatItemValueTypeEnum,
   ChatRoleEnum,
   ChatStatusEnum
 } from '@fastgpt/global/core/chat/constants';
 import FilesBlock from './FilesBox';
-import { actionMap } from '@/web/common/utils/map';
+import { useChatProviderStore } from '../Provider';
 
 const colorMap = {
   [ChatStatusEnum.loading]: {
@@ -60,11 +57,9 @@ const ChatItem = ({
     status: `${ChatStatusEnum}`;
     name: string;
   };
-  isLastChild?: boolean;
   questionGuides?: string[];
   children?: React.ReactNode;
 } & ChatControllerProps) => {
-  const theme = useTheme();
   const styleMap: BoxProps =
     type === ChatRoleEnum.Human
       ? {
@@ -81,53 +76,51 @@ const ChatItem = ({
           textAlign: 'left',
           bg: 'myGray.50'
         };
-  const { chat, isChatting } = chatControllerProps;
 
-  /**
-   * 处理地图参数
-   */
-  const handleMapParam = (source: string) => {
-    const startIndex = source.indexOf('mapStart');
-    const endIndex = source.indexOf('mapEnd');
-    const param = source.substring(startIndex + 8, endIndex);
-    const newSource = source.substring(0, startIndex);
-    actionMap(param);
-    return newSource;
-  };
+  const { isChatting } = useChatProviderStore();
+  const { chat } = chatControllerProps;
 
   const ContentCard = useMemo(() => {
-    console.log(chat.value);
     if (type === 'Human') {
       const { text, files = [] } = formatChatValue2InputType(chat.value);
 
       return (
         <>
           {files.length > 0 && <FilesBlock files={files} />}
-          <Markdown source={text} isChatting={false} />
+          <Markdown source={text} />
         </>
       );
     }
+
     /* AI */
     return (
-      <Flex flexDirection={'column'} gap={2}>
+      <Flex flexDirection={'column'} key={chat.dataId} gap={2}>
         {chat.value.map((value, i) => {
           const key = `${chat.dataId}-ai-${i}`;
+
           if (value.text) {
-            let source = value.text?.content || '';
-            // let source = 'type:mapAi&action:查询&param:上海';
-            if (source.indexOf('mapAi') > -1 && source.indexOf('mapStart') === -1) {
-              return <MapInfo key={key} params={source} uid={key} />;
-            } else {
-              if (source.indexOf('mapStart') > -1) {
-                source = handleMapParam(source);
-              }
-              if (isLastChild && !isChatting && questionGuides.length > 0) {
-                source = `${source}
-\`\`\`${CodeClassName.questionGuide} 
+            let source = (value.text?.content || '').trim();
+
+            if (!source && chat.value.length > 1) return null;
+
+            if (
+              isLastChild &&
+              !isChatting &&
+              questionGuides.length > 0 &&
+              i === chat.value.length - 1
+            ) {
+              source = `${source}
+\`\`\`${CodeClassName.questionGuide}
 ${JSON.stringify(questionGuides)}`;
-              }
-              return <Markdown key={key} source={source} isChatting={isLastChild && isChatting} />;
             }
+
+            return (
+              <Markdown
+                key={key}
+                source={source}
+                showAnimation={isLastChild && isChatting && i === chat.value.length - 1}
+              />
+            );
           }
           if (value.type === ChatItemValueTypeEnum.tool && value.tools) {
             return (
@@ -147,6 +140,7 @@ ${JSON.stringify(questionGuides)}`;
                       return tool.response;
                     }
                   })();
+
                   return (
                     <Box key={tool.id}>
                       <Accordion allowToggle>
@@ -179,7 +173,7 @@ ${JSON.stringify(questionGuides)}`;
                             maxH={'500px'}
                             overflowY={'auto'}
                           >
-                            {toolParams && (
+                            {toolParams && toolParams !== '{}' && (
                               <Markdown
                                 source={`~~~json#Input
 ${toolParams}`}
@@ -200,6 +194,7 @@ ${toolResponse}`}
               </Box>
             );
           }
+          return null;
         })}
       </Flex>
     );
@@ -216,7 +211,7 @@ ${toolResponse}`}
       <Flex w={'100%'} alignItems={'center'} gap={2} justifyContent={styleMap.justifyContent}>
         {isChatting && type === ChatRoleEnum.AI && isLastChild ? null : (
           <Box order={styleMap.order} ml={styleMap.ml}>
-            <ChatController {...chatControllerProps} />
+            <ChatController {...chatControllerProps} isLastChild={isLastChild} />
           </Box>
         )}
         <ChatAvatar src={avatar} type={type} />
@@ -242,7 +237,6 @@ ${toolResponse}`}
         <Card
           className="markdown"
           {...MessageCardStyle}
-          style={{ width: 'auto' }}
           bg={styleMap.bg}
           borderRadius={styleMap.borderRadius}
           textAlign={'left'}
@@ -255,4 +249,4 @@ ${toolResponse}`}
   );
 };
 
-export default ChatItem;
+export default React.memo(ChatItem);

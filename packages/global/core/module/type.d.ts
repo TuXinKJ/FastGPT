@@ -2,23 +2,25 @@ import { FlowNodeTypeEnum } from './node/constant';
 import {
   ModuleIOValueTypeEnum,
   ModuleOutputKeyEnum,
-  ModuleTemplateTypeEnum,
+  FlowNodeTemplateTypeEnum,
   VariableInputEnum
 } from './constants';
 import { DispatchNodeResponseKeyEnum } from './runtime/constants';
 import { FlowNodeInputItemType, FlowNodeOutputItemType } from './node/type';
 import { UserModelSchema } from 'support/user/type';
 import {
+  ChatItemType,
   ChatItemValueItemType,
   ToolRunResponseItemType,
   UserChatItemValueItemType
 } from '../chat/type';
 import { ChatNodeUsageType } from '../../support/wallet/bill/type';
 import { RunningModuleItemType } from './runtime/type';
+import { PluginTypeEnum } from 'core/plugin/constants';
 
-export type FlowModuleTemplateType = {
+export type FlowNodeTemplateType = {
   id: string; // module id, unique
-  templateType: `${ModuleTemplateTypeEnum}`;
+  templateType: `${FlowNodeTemplateTypeEnum}`;
   flowType: `${FlowNodeTypeEnum}`; // render node card
   avatar?: string;
   name: string;
@@ -27,14 +29,18 @@ export type FlowModuleTemplateType = {
   showStatus?: boolean; // chatting response step status
   inputs: FlowNodeInputItemType[];
   outputs: FlowNodeOutputItemType[];
+
+  // plugin data
+  pluginType?: `${PluginTypeEnum}`;
+  parentId?: string;
 };
-export type FlowModuleItemType = FlowModuleTemplateType & {
+export type FlowModuleItemType = FlowNodeTemplateType & {
   moduleId: string;
 };
 export type moduleTemplateListType = {
-  type: `${ModuleTemplateTypeEnum}`;
+  type: `${FlowNodeTemplateTypeEnum}`;
   label: string;
-  list: FlowModuleTemplateType[];
+  list: FlowNodeTemplateType[];
 }[];
 
 // store module type
@@ -57,24 +63,6 @@ export type ModuleItemType = {
 };
 
 /* --------------- function type -------------------- */
-// variable
-export type VariableItemType = {
-  id: string;
-  key: string;
-  label: string;
-  type: `${VariableInputEnum}`;
-  required: boolean;
-  maxLen: number;
-  enums: { value: string }[];
-};
-// tts
-export type AppTTSConfigType = {
-  type: 'none' | 'web' | 'model';
-  model?: string;
-  voice?: string;
-  speed?: number;
-};
-
 export type SelectAppItemType = {
   id: string;
   name: string;
@@ -109,6 +97,7 @@ export type ChatDispatchProps = {
   inputFiles?: UserChatItemValueItemType['file'][];
   stream: boolean;
   detail: boolean; // response detail
+  maxRunTimes: number;
 };
 
 export type ModuleDispatchProps<T> = ChatDispatchProps & {

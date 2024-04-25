@@ -1,4 +1,4 @@
-export enum ModuleTemplateTypeEnum {
+export enum FlowNodeTemplateTypeEnum {
   userGuide = 'userGuide',
   systemInput = 'systemInput',
   tools = 'tools',
@@ -37,6 +37,7 @@ export enum ModuleInputKeyEnum {
   userChatInput = 'userChatInput',
   questionGuide = 'questionGuide',
   tts = 'tts',
+  whisper = 'whisper',
   answerText = 'text',
   agents = 'agents', // cq agent key
 
@@ -87,7 +88,8 @@ export enum ModuleInputKeyEnum {
   runAppSelectApp = 'app',
 
   // plugin
-  pluginId = 'pluginId'
+  pluginId = 'pluginId',
+  pluginStart = 'pluginStart'
 }
 
 export enum ModuleOutputKeyEnum {
@@ -117,7 +119,10 @@ export enum ModuleOutputKeyEnum {
   selectedTools = 'selectedTools',
 
   // http
-  httpRawResponse = 'httpRawResponse'
+  httpRawResponse = 'httpRawResponse',
+
+  // plugin
+  pluginStart = 'pluginStart'
 }
 
 export enum VariableInputEnum {

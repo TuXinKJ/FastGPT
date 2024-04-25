@@ -73,6 +73,13 @@ export const DatasetCollectionSyncResultMap = {
 /* ------------ data -------------- */
 
 /* ------------ training -------------- */
+export enum ImportDataSourceEnum {
+  fileLocal = 'fileLocal',
+  fileLink = 'fileLink',
+  fileCustom = 'fileCustom',
+  csvTable = 'csvTable'
+}
+
 export enum TrainingModeEnum {
   chunk = 'chunk',
   auto = 'auto',
@@ -153,9 +160,6 @@ export const SearchScoreTypeMap = {
     showScore: false
   }
 };
-
-export const FolderIcon = 'file/fill/folder';
-export const FolderImgUrl = '/imgs/files/folder.svg';
 
 export const CustomCollectionIcon = 'common/linkBlue';
 export const LinkCollectionIcon = 'common/linkBlue';
